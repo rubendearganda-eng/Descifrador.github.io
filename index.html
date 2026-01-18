@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Cifrado AES-256 CBC (Funcional)</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f4f4f4; padding: 20px; }
+    h1 { color: #333; }
+    textarea, input { width: 100%; margin: 10px 0; padding: 10px; }
+    button { padding: 10px 20px; margin-right: 10px; }
+    .container { background: white; padding: 20px; border-radius: 8px; max-width: 800px; margin: auto; }
+    .info { font-size: 0.9em; color: #555; }
+    .error { color: red; margin-top: 10px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Cifrado / Descifrado AES-256 (CBC)</h1>
+    <p class="info">
+      Nota técnica: los navegadores NO soportan AES-ECB por seguridad. Se usa AES-CBC, que sí está soportado y es estándar.
+    </p>
+
+    <label>Texto de entrada</label>
+    <textarea id="inputText" rows="6"></textarea>
+
+    <label>Clave (se derivará con SHA-256)</label>
+    <input type="text" id="key">
+
+    <button onclick="encrypt()">Cifrar</button>
+    <button onclick="decrypt()">Descifrar</button>
+
+    <label>Resultado</label>
+    <textarea id="outputText" rows="6" readonly></textarea>
+    <div id="error" class="error"></div>
+  </div>
+
+  <script>
+    const encoder = new TextEncoder();
+    const decoder = new TextDecoder();
+
+    async function sha256(text) {
+      return crypto.subtle.digest('SHA-256', encoder.encode(text));
+    }
+
+    async function getKey(keyText) {
+      const hash = await sha256(keyText);
+      return crypto.subtle.importKey(
+        'raw',
+        hash,
+        { name: 'AES-CBC' },
+        false,
+        ['encrypt', 'decrypt']
+      );
+    }
+
+    function toBase64(buffer) {
+      return btoa(String.fromCharCode(...new Uint8Array(buffer)));
+    }
+
+    function fromBase64(base64) {
+      return Uint8Array.from(atob(base64), c => c.charCodeAt(0));
+    }
+
+    async function encrypt() {
+      try {
+        document.getElementById('error').textContent = '';
+        const text = document.getElementById('inputText').value;
+        const keyText = document.getElementById('key').value;
+        const key = await getKey(keyText);
+
+        const iv = crypto.getRandomValues(new Uint8Array(16));
+        const encrypted = await crypto.subtle.encrypt(
+          { name: 'AES-CBC', iv },
+          key,
+          encoder.encode(text)
+        );
+
+        const combined = new Uint8Array(iv.length + encrypted.byteLength);
+        combined.set(iv, 0);
+        combined.set(new Uint8Array(encrypted), iv.length);
+
+        document.getElementById('outputText').value = toBase64(combined.buffer);
+      } catch (e) {
+        document.getElementById('error').textContent = 'Error al cifrar: ' + e.message;
+      }
+    }
+
+    async function decrypt() {
+      try {
+        document.getElementById('error').textContent = '';
+        const data = fromBase64(document.getElementById('inputText').value);
+        const keyText = document.getElementById('key').value;
+        const key = await getKey(keyText);
+
+        const iv = data.slice(0, 16);
+        const ciphertext = data.slice(16);
+
+        const decrypted = await crypto.subtle.decrypt(
+          { name: 'AES-CBC', iv },
+          key,
+          ciphertext
+        );
+
+        document.getElementById('outputText').value = decoder.decode(decrypted);
+      } catch (e) {
+        document.getElementById('error').textContent = 'Error al descifrar (clave o texto incorrectos)';
+      }
+    }
+  </script>
+</body>
+</html>
