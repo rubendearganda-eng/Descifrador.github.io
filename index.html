@@ -36,7 +36,10 @@
     <textarea id="inputText" rows="6"></textarea>
 
     <label>Clave (se derivará con SHA-256)</label>
-    <input type="text" id="key">
+<div style="display:flex; gap:8px; align-items:center;">
+  <input type="password" id="key" style="flex:1;">
+  <button type="button" onclick="toggleKey()">Mostrar</button>
+</div>
 
     <button onclick="encrypt()">Cifrar</button>
     <button onclick="decrypt()">Descifrar</button>
@@ -120,6 +123,18 @@
         document.getElementById('error').textContent = 'Error al descifrar';
       }
     }
-  </script>
+    function toggleKey() {
+    const keyInput = document.getElementById('key');
+    const btn = event.currentTarget;
+    if (keyInput.type === 'password') {
+      keyInput.type = 'text';
+      btn.textContent = 'Ocultar';
+    } else {
+      keyInput.type = 'password';
+      btn.textContent = 'Mostrar';
+    }
+  }
+
+</script>
 </body>
 </html>
